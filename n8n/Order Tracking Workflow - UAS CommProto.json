@@ -1,0 +1,778 @@
+{
+  "name": "Order Tracking Workflow - UAS CommProto",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "commproto-p10",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "d0704da2-0a0f-4652-a5cd-7b103e83a06e",
+      "name": "Webhook - Order Tracking",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -1840,
+        1344
+      ],
+      "webhookId": "18196010-dcca-4220-bb62-1385687583d6"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1",
+              "name": "orderId",
+              "value": "={{ $json.body?.orderId || $json.orderId || 'ORD-' + Date.now() }}",
+              "type": "string"
+            },
+            {
+              "id": "a2",
+              "name": "customer",
+              "value": "={{ $json.body?.customer || $json.customer || 'demo-customer' }}",
+              "type": "string"
+            },
+            {
+              "id": "a3",
+              "name": "amount",
+              "value": "={{ $json.body?.amount ?? $json.amount ?? 0 }}",
+              "type": "number"
+            },
+            {
+              "id": "a4",
+              "name": "timestamp",
+              "value": "={{ $json.body?.timestamp || $json.timestamp || $now.toISO() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "b9207fab-4aba-4484-b016-cea649f42a31",
+      "name": "Normalize Request",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1616,
+        1344
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "v1",
+              "leftValue": "={{ $json.amount }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            },
+            {
+              "id": "v2",
+              "leftValue": "={{ $json.customer }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "6a01bc72-12e4-4d4b-8c5a-ce58ef1fd042",
+      "name": "Validate Payload",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -1392,
+        1344
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:8088/api/microservices/orders",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"orderId\": $json.orderId, \"customer\": $json.customer, \"amount\": $json.amount, \"timestamp\": $json.timestamp, \"wireCapture\": true } }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "adddcdcb-e396-4f25-b388-0d654bce0a98",
+      "name": "Call Order API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1184,
+        1232
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.statusCode }}",
+              "rightValue": 400,
+              "operator": {
+                "type": "number",
+                "operation": "lt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "8594b328-c0c6-439c-9784-84c00ee84431",
+      "name": "Check Status Code < 400",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -960,
+        1232
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "s1",
+              "name": "workflowResult",
+              "value": "SUCCESS",
+              "type": "string"
+            },
+            {
+              "id": "s2",
+              "name": "workflowBranch",
+              "value": "TRUE_BRANCH_SUCCESS",
+              "type": "string"
+            },
+            {
+              "id": "s3",
+              "name": "executedNode",
+              "value": "Build Success Response",
+              "type": "string"
+            },
+            {
+              "id": "s4",
+              "name": "orderId",
+              "value": "={{ $('Normalize Request').item.json.orderId }}",
+              "type": "string"
+            },
+            {
+              "id": "s5",
+              "name": "customer",
+              "value": "={{ $('Normalize Request').item.json.customer }}",
+              "type": "string"
+            },
+            {
+              "id": "s6",
+              "name": "amount",
+              "value": "={{ $('Normalize Request').item.json.amount }}",
+              "type": "number"
+            },
+            {
+              "id": "s7",
+              "name": "orderStatus",
+              "value": "CONFIRMED",
+              "type": "string"
+            },
+            {
+              "id": "s8",
+              "name": "timestamp",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            },
+            {
+              "id": "s9",
+              "name": "backendStatusCode",
+              "value": "={{ $json.statusCode }}",
+              "type": "number"
+            },
+            {
+              "id": "s10",
+              "name": "backendMessage",
+              "value": "Order accepted and confirmed by backend",
+              "type": "string"
+            },
+            {
+              "id": "s11",
+              "name": "evidenceMessage",
+              "value": "Workflow validated the payload, called the Order API, and received backendStatusCode below 400, so the order was confirmed.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "19b4776c-9594-44fa-b3be-5427e0b22d1a",
+      "name": "Build Success Response",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -736,
+        1120
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e1",
+              "name": "workflowResult",
+              "value": "FAILED",
+              "type": "string"
+            },
+            {
+              "id": "e2",
+              "name": "workflowBranch",
+              "value": "FALSE_BRANCH_ERROR",
+              "type": "string"
+            },
+            {
+              "id": "e3",
+              "name": "executedNode",
+              "value": "Build Error Response",
+              "type": "string"
+            },
+            {
+              "id": "e4",
+              "name": "orderId",
+              "value": "={{ $('Normalize Request').item.json.orderId }}",
+              "type": "string"
+            },
+            {
+              "id": "e5",
+              "name": "customer",
+              "value": "={{ $('Normalize Request').item.json.customer }}",
+              "type": "string"
+            },
+            {
+              "id": "e6",
+              "name": "amount",
+              "value": "={{ $('Normalize Request').item.json.amount }}",
+              "type": "number"
+            },
+            {
+              "id": "e7",
+              "name": "orderStatus",
+              "value": "REJECTED",
+              "type": "string"
+            },
+            {
+              "id": "e8",
+              "name": "timestamp",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            },
+            {
+              "id": "e9",
+              "name": "backendStatusCode",
+              "value": "={{ $json.statusCode || null }}",
+              "type": "string"
+            },
+            {
+              "id": "e10",
+              "name": "backendMessage",
+              "value": "={{ $json.statusCode ? 'Order rejected by backend (status ' + $json.statusCode + ')' : 'Order rejected: failed validation (amount must be greater than 0 and customer must not be empty) before reaching the backend' }}",
+              "type": "string"
+            },
+            {
+              "id": "e11",
+              "name": "evidenceMessage",
+              "value": "={{ $json.statusCode ? 'Workflow hit the FALSE branch because backendStatusCode was 400 or above.' : 'Workflow hit the FALSE branch because the payload failed validation before calling the backend API.' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "8cbbb0fb-e6ea-424c-9a96-2c83d7de58c4",
+      "name": "Build Error Response",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -736,
+        1440
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": "={{ $json.backendStatusCode || 200 }}"
+        }
+      },
+      "id": "a6bfff48-04e6-43cd-9d03-ba8b91c3a283",
+      "name": "Respond Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        -336,
+        1136
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": "={{ $json.backendStatusCode && $json.backendStatusCode >= 400 ? $json.backendStatusCode : 400 }}"
+        }
+      },
+      "id": "bcc5b5b7-4aa9-4e30-ba0a-a9dee3bdf8ed",
+      "name": "Respond Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        -288,
+        1440
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const staticData = $getWorkflowStaticData('global');\nif (!staticData.orders) staticData.orders = {};\n\nconst input = $json;\nstaticData.orders[input.orderId] = {\n  orderId: input.orderId,\n  customer: input.customer,\n  amount: input.amount,\n  orderStatus: input.orderStatus,\n  workflowBranch: input.workflowBranch,\n  backendStatusCode: input.backendStatusCode,\n  updatedAt: new Date().toISOString()\n};\n\nreturn [{ json: input }];"
+      },
+      "id": "b719d532-eb9e-40fc-a38b-6561e537adf7",
+      "name": "Save Order State (Success)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -496,
+        1136
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const staticData = $getWorkflowStaticData('global');\nif (!staticData.orders) staticData.orders = {};\n\nconst input = $json;\nstaticData.orders[input.orderId] = {\n  orderId: input.orderId,\n  customer: input.customer,\n  amount: input.amount,\n  orderStatus: input.orderStatus,\n  workflowBranch: input.workflowBranch,\n  backendStatusCode: input.backendStatusCode,\n  updatedAt: new Date().toISOString()\n};\n\nreturn [{ json: input }];"
+      },
+      "id": "5b404198-8c52-4f1f-8854-8ebefe0e0dc0",
+      "name": "Save Order State (Error)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -512,
+        1440
+      ]
+    },
+    {
+      "parameters": {
+        "path": "order-status",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "45ec3a91-e488-414a-aa2f-017b2b12b32a",
+      "name": "Webhook - Check Order Status",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -1824,
+        1824
+      ],
+      "webhookId": "8155f3f5-a936-4864-99fd-be853f8f1d34"
+    },
+    {
+      "parameters": {
+        "jsCode": "const staticData = $getWorkflowStaticData('global');\nconst orders = staticData.orders || {};\n\nconst orderId = $json.params?.orderId || $json.query?.orderId || null;\nconst order = orderId ? orders[orderId] : null;\n\nreturn [{\n  json: {\n    orderId,\n    found: !!order,\n    order: order || null\n  }\n}];"
+      },
+      "id": "7408a463-f59a-4cd9-938b-904e92cadac7",
+      "name": "Lookup Order",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1600,
+        1824
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f1",
+              "name": "success",
+              "value": "={{ true }}",
+              "type": "boolean"
+            },
+            {
+              "id": "f2",
+              "name": "orderId",
+              "value": "={{ $json.order.orderId }}",
+              "type": "string"
+            },
+            {
+              "id": "f3",
+              "name": "customer",
+              "value": "={{ $json.order.customer }}",
+              "type": "string"
+            },
+            {
+              "id": "f4",
+              "name": "amount",
+              "value": "={{ $json.order.amount }}",
+              "type": "number"
+            },
+            {
+              "id": "f5",
+              "name": "orderStatus",
+              "value": "={{ $json.order.orderStatus }}",
+              "type": "string"
+            },
+            {
+              "id": "f6",
+              "name": "workflowBranch",
+              "value": "={{ $json.order.workflowBranch }}",
+              "type": "string"
+            },
+            {
+              "id": "f7",
+              "name": "updatedAt",
+              "value": "={{ $json.order.updatedAt }}",
+              "type": "string"
+            },
+            {
+              "id": "f8",
+              "name": "message",
+              "value": "Order status retrieved successfully",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "5a97083d-bf6f-4ee4-9630-28680f1f757e",
+      "name": "Build Order Found Response",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1168,
+        1728
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "n1",
+              "name": "success",
+              "value": "={{ false }}",
+              "type": "boolean"
+            },
+            {
+              "id": "n2",
+              "name": "orderId",
+              "value": "={{ $json.orderId }}",
+              "type": "string"
+            },
+            {
+              "id": "n3",
+              "name": "message",
+              "value": "Order not found. Pastikan orderId benar dan order sudah pernah dibuat lewat endpoint create.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "bc9b3ea6-2f10-4d71-82a8-649b5caa4247",
+      "name": "Build Order Not Found Response",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1168,
+        1920
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "a32059a8-2b03-4796-a344-d4804cbb18ea",
+      "name": "Respond Order Found",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        -944,
+        1728
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": 404
+        }
+      },
+      "id": "a8c25aa2-429f-4c40-977a-1f20c973fca3",
+      "name": "Respond Order Not Found",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        -944,
+        1920
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "found1",
+              "leftValue": "={{ $json.found }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "f738c9a4-b264-43b9-b1b5-2e2153cdc33c",
+      "name": "IF - Order Found",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -1376,
+        1824
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook - Order Tracking": {
+      "main": [
+        [
+          {
+            "node": "Normalize Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Request": {
+      "main": [
+        [
+          {
+            "node": "Validate Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Payload": {
+      "main": [
+        [
+          {
+            "node": "Call Order API",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Error Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Order API": {
+      "main": [
+        [
+          {
+            "node": "Check Status Code < 400",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Status Code < 400": {
+      "main": [
+        [
+          {
+            "node": "Build Success Response",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Error Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Success Response": {
+      "main": [
+        [
+          {
+            "node": "Save Order State (Success)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Error Response": {
+      "main": [
+        [
+          {
+            "node": "Save Order State (Error)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Order State (Success)": {
+      "main": [
+        [
+          {
+            "node": "Respond Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Order State (Error)": {
+      "main": [
+        [
+          {
+            "node": "Respond Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook - Check Order Status": {
+      "main": [
+        [
+          {
+            "node": "Lookup Order",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lookup Order": {
+      "main": [
+        [
+          {
+            "node": "IF - Order Found",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Order Found Response": {
+      "main": [
+        [
+          {
+            "node": "Respond Order Found",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Order Not Found Response": {
+      "main": [
+        [
+          {
+            "node": "Respond Order Not Found",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF - Order Found": {
+      "main": [
+        [
+          {
+            "node": "Build Order Found Response",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Order Not Found Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "a583f32f-1944-4d52-a336-5ff491c3d1d7",
+  "meta": {
+    "instanceId": "9554d5faa049c4cc50b43f2dde387e4ed2c30e5381fce15b6fbdc21f3bac3c06"
+  },
+  "nodeGroups": [],
+  "id": "8MMMkFIRHZkutfFT",
+  "tags": []
+}
